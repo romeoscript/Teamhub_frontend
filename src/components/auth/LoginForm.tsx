@@ -47,7 +47,7 @@ export const LoginForm = ({ onSwitch }: LoginFormProps) => {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
-
+  
     try {
       const response = await fetch('https://black-kohl.vercel.app/api/auth/login', {
         method: 'POST',
@@ -59,37 +59,35 @@ export const LoginForm = ({ onSwitch }: LoginFormProps) => {
           password: formData.password
         })
       });
-
+  
       const data = await response.json();
       
       if (!response.ok) {
         throw new Error(data.message || 'Failed to log in');
       }
-
+  
       // Validate token before storing
       const tokenPayload = parseJwt(data.token);
       if (!tokenPayload) {
         throw new Error('Invalid token received');
       }
-
+  
       // Check token expiration
       if (tokenPayload.exp && tokenPayload.exp * 1000 < Date.now()) {
         throw new Error('Token is already expired');
       }
-
-      // Store token and user info in localStorage or sessionStorage based on remember me
+  
+      // Store token and user info immediately
       const storage = rememberMe ? localStorage : sessionStorage;
       storage.setItem('token', data.token);
       storage.setItem('user', JSON.stringify(data.user));
       
-      // For debugging purposes - can be removed in production
-      console.log('Token expires at:', new Date(tokenPayload.exp * 1000).toLocaleString());
-
-      toast.success('Successfully logged in');
-      
-      // Redirect to home page or intended destination
+      // Immediately redirect without waiting for toast
       const from = location.state?.from?.pathname || '/';
       navigate(from, { replace: true });
+      
+      // Show success toast after navigation is triggered
+      toast.success('Successfully logged in');
       
     } catch (error) {
       console.error('Login error:', error);
