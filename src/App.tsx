@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import VerifyEmail from "./pages/VerifyEmail";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 
 const queryClient = new QueryClient();
 
@@ -16,55 +17,12 @@ interface ProtectedRouteProps {
   children: ReactNode;
 }
 
-// JWT authentication check function
-const isAuthenticated = (): boolean => {
-  const token = localStorage.getItem("token");
-  
-  // If no token exists, user is not authenticated
-  if (!token) return false;
-  
-  try {
-    // Parse the JWT token
-    const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => {
-      return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-    }).join(''));
-    
-    const payload = JSON.parse(jsonPayload);
-    
-    // Check if the token is expired
-    if (payload.exp && payload.exp * 1000 < Date.now()) {
-      // Token is expired, clear it and return false
-      localStorage.removeItem("token");
-      return false;
-    }
-    
-    // Optional: Check the token issuer
-    if (payload.iss && payload.iss !== "your-expected-issuer") {
-      return false;
-    }
-    
-    // Optional: Check the audience
-    if (payload.aud && payload.aud !== "your-expected-audience") {
-      return false;
-    }
-    
-    // Token is valid
-    return true;
-  } catch (error) {
-    // If token parsing fails, it's invalid
-    console.error("Invalid token:", error);
-    localStorage.removeItem("token");
-    return false;
-  }
-};
-
-// Protected Route component that redirects to /auth if not authenticated
+// Protected Route component that uses our AuthContext
 const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const location = useLocation();
+  const { isAuthenticated } = useAuth();
 
-  if (!isAuthenticated()) {
+  if (!isAuthenticated) {
     // Redirect to /auth and store the page they were trying to access
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
@@ -72,7 +30,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   return <>{children}</>;
 };
 
-const App = () => {
+const AppRoutes = () => {
   // Use state to avoid hydration issues
   const [mounted, setMounted] = useState(false);
 
@@ -86,27 +44,35 @@ const App = () => {
   }
 
   return (
+    <Routes>
+      <Route 
+        path="/" 
+        element={
+          <ProtectedRoute>
+            <Index />
+          </ProtectedRoute>
+        } 
+      />
+      <Route path="/auth" element={<Auth />} />
+      <Route path="/verify-email" element={<VerifyEmail />} />
+      {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+};
+
+const App = () => {
+  return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route 
-              path="/" 
-              element={
-                <ProtectedRoute>
-                  <Index />
-                </ProtectedRoute>
-              } 
-            />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/verify-email" element={<VerifyEmail />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 };

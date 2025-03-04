@@ -4,6 +4,8 @@ import { Input } from "./ui/input";
 import { Mail, X } from "lucide-react";
 import { toast } from "sonner";
 
+
+
 export function InviteTeamForm() {
   const [emails, setEmails] = useState<string[]>([]);
   const [currentEmail, setCurrentEmail] = useState("");
